@@ -1,5 +1,6 @@
 crci <- function(x, from, to,
-                 timepoints = x$time, level = 0.95) {
+                 timepoints = x$time, level = 0.95,
+                 percent = FALSE, digits) {
   ##
   ## Calculate confidence intervals for cumulative incidences
   ##
@@ -21,6 +22,18 @@ crci <- function(x, from, to,
   ##
   lower <- 1 - (1 - P)^exp(+ qnorm(1 - alpha / 2) * se)
   upper <- 1 - (1 - P)^exp(- qnorm(1 - alpha / 2) * se)
+  ##
+  if (percent) {
+    P <- 100 * P
+    lower <- 100 * lower
+    upper <- 100 * upper
+  }
+  ##
+  if (!missing(digits)) {
+    P <- round(P, digits)
+    lower <- round(lower, digits)
+    upper <- round(upper, digits)
+  }
   ##
   res <- data.frame(from, to,
                     start = x$s, stop = timepoints,
