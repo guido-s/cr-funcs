@@ -1,20 +1,14 @@
-crplot <- function(x, y, tr.choice1, tr.choice2,
+crplot <- function(x, y,
+                   tr.choice1, tr.choice2,
                    main1 = deparse(substitute(x)),
                    main2 = deparse(substitute(y)),
-                   panel = "transition",
+                   plottype = "subgroup",
                    text.legend1 = "", text.legend2,
                    lty = c(1, 1), lwd = 1.5, col = c("black", "darkgrey"),
-                   pty = "s", xlab = "", ylab,
+                   pty = "s", xlab = "", ylab = "",
                    x.add, y.add,
+                   bland.altman = TRUE,
                    ...) {
-  ##
-  ## Competings risks plots
-  ##
-  if (!inherits(x, c("etm", "mvna")))
-    stop("Argument 'x' must be of class 'etm' or 'mvna'.")
-  ##
-  if (!missing(y) && !inherits(y, c("etm", "mvna")))
-    stop("Argument 'y' must be of class 'etm' or 'mvna'.")
   ##
   if (length(lwd) == 1)
     lwd <- rep_len(lwd, length(lty))
@@ -22,17 +16,15 @@ crplot <- function(x, y, tr.choice1, tr.choice2,
   if (missing(text.legend2))
     text.legend2 <- text.legend1
   ##
-  if (missing(ylab))
-    if (inherits(x, "etm"))
-      ylab <- "Probability"
-    else if (inherits(x, "mvna"))
-      ylab <- "Cumulative Hazard"
-    else
-      ylab <- ""
+  plottype <- setchar(plottype, c("subgroup", "transition", "goodness.of.fit"))
   ##
-  panel <- setchar(panel, c("subgroup", "transition", "goodness.of.fit"))
-  ##
-  if (!missing(y) & panel == "subgroup") {
+  if (!missing(y) & plottype == "subgroup") {
+    ##
+    if (missing(ylab))
+      if (inherits(x, "etm"))
+        ylab <- "Probability"
+      else if (inherits(x, "mvna"))
+        ylab <- "Cumulative Hazard"
     ##
     oldpar <- par(pty = pty)
     on.exit(par(oldpar))
@@ -107,7 +99,13 @@ crplot <- function(x, y, tr.choice1, tr.choice2,
     par(oldpar1)
   }
   ##
-  else if (!missing(y) & panel == "transition") {
+  else if (!missing(y) & plottype == "transition") {
+    ##
+    if (missing(ylab))
+      if (inherits(x, "etm"))
+        ylab <- "Probability"
+      else if (inherits(x, "mvna"))
+        ylab <- "Cumulative Hazard"
     ##
     oldpar <- par(pty = pty)
     on.exit(oldpar)
@@ -178,7 +176,12 @@ crplot <- function(x, y, tr.choice1, tr.choice2,
     par(oldpar1)
   }
   ##
-  else if (!missing(y) & panel == "goodness.of.fit") {
+  else if (!missing(y) & plottype == "goodness.of.fit") {
+    ##
+    if (missing(xlab))
+      xlab <- "Average Cumulative Hazard"
+    if (missing(ylab))
+      ylab <- "Difference of Cumulative Hazards"
     ##
     time1 <- x[[tr.choice1]]$time
     time2 <- y[[tr.choice1]]$time
@@ -202,14 +205,25 @@ crplot <- function(x, y, tr.choice1, tr.choice2,
     oldpar1 <- par(mar = c(5, 0, 4, 0) + 0.1,
                    oma = c(0, 4.5, 0, 1.5))
     ##
-    plot(NE1, NE2, type = "n",
-         main = main1,
+    if (bland.altman) {
+      NE1 <- NE1 * exp(x.add$coef)
+      xpos <- (NE1 + NE2) / 2
+      ypos = NE1 - NE2
+    }
+    ##
+    plot(xpos, ypos, type = "n", main = main1,
          lty = lty[1], lwd = lwd[1], col = col[1],
          xlab = xlab, ylab = "",
          ...)
-    abline(a = 0, b = exp(x.add$coef), col = "darkgray",
-           lwd = lwd[1])
-    lines(NE1, NE2, type = "s",
+    ##
+    if (bland.altman)
+      abline(h = 0, col = "darkgray", lwd = lwd[1])
+    else
+      abline(a = 0, b = exp(x.add$coef), col = "darkgray",
+             lwd = lwd[1])
+    ##
+    lines(xpos, ypos,
+          type = "s",
           lty = lty[1], lwd = lwd[1], col = col[1])
     ##
     mtext(ylab, side = 2, line = 3)
@@ -231,15 +245,25 @@ crplot <- function(x, y, tr.choice1, tr.choice2,
     oldpar2 <- par(mar = c(5, 0, 4, 0) + 0.1,
                    oma = c(0, 4.5, 0, 1.5))
     ##
-    plot(NE1, NE2, type = "n",
-         main = main2,
+    ##
+    if (bland.altman) {
+      NE1 <- NE1 * exp(y.add$coef)
+      xpos <- (NE1 + NE2) / 2
+      ypos = NE1 - NE2
+    }
+    ##
+    plot(xpos, ypos, type = "n", main = main2,
          lty = lty[1], lwd = lwd[1], col = col[1],
          xlab = xlab, ylab = "",
-         axes = FALSE,
-         ...)
-    abline(a = 0, b = exp(y.add$coef), col = "darkgray",
-           lwd = lwd[1])
-    lines(NE1, NE2, type = "s",
+         axes = FALSE, ...)
+    ##
+    if (bland.altman)
+      abline(h = 0, col = "darkgray", lwd = lwd[1])
+    else
+      abline(a = 0, b = exp(y.add$coef), col = "darkgray",
+             lwd = lwd[1])
+    ##
+    lines(xpos, ypos, type = "s",
           lty = lty[1], lwd = lwd[1], col = col[1])
     ##
     axis(1)
@@ -249,6 +273,13 @@ crplot <- function(x, y, tr.choice1, tr.choice2,
     par(oldpar1)
   }
   else if (missing(y)) {
+    ##
+    if (missing(ylab))
+      if (inherits(x, "etm"))
+        ylab <- "Probability"
+      else if (inherits(x, "mvna"))
+        ylab <- "Cumulative Hazard"
+    ##
     oldpar <- par(pty = pty)
     on.exit(par(oldpar))
     ##
